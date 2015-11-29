@@ -1,0 +1,84 @@
+#!/usr/bin/python3
+#coding=utf-8
+import subprocess
+import urllib.request
+import os
+import signal
+import sys
+import time
+
+LOCAL_PORT=1080
+
+def getIShadowsocksHtml():
+    URL='http://www.ishadowsocks.com'
+    data = urllib.request.urlopen(URL).read()
+    data = data.decode('UTF-8')
+    return data
+
+def getFreshConfig():
+    """ ugly but quick implement for me"""
+    KEYWORD_SEVER="服务器地址:"
+    KEYWORD_PORT="端口:"
+    KEYWORD_PASSWORD="密码:"
+    KEYWORD_ENCRYPTION="加密方式:"
+    indexDictionary= {
+            KEYWORD_SEVER: 0,
+            KEYWORD_PORT: 1,
+            KEYWORD_PASSWORD: 2,
+            KEYWORD_ENCRYPTION: 3,
+            }
+
+    htmlContent = getIShadowsocksHtml()
+    serverlist = []
+    for line in htmlContent.splitlines():
+        for k, v in indexDictionary.items():
+            if k in line:
+                if v == 0:
+                    serverlist.append([""] * 4)
+                content = line.split(":",1)[1].strip()[:-5]
+                serverlist[-1][v] = content
+    return serverlist
+
+def selectOneServer(serverlist):
+    for s in serverlist:
+        if all(s):
+            return s
+    return None
+
+
+def stopSslocal():
+    cmd='lsof -i TCP:%s -s TCP:listen -n -F pc || true'%(LOCAL_PORT)
+    lines = subprocess.check_output(cmd, shell=True).strip().splitlines()
+    print("lsof:", lines)
+    if len(lines) == 2:
+        if lines[1] == b"csslocal":
+            pid = int(lines[0][1:])
+            os.kill(pid, signal.SIGTERM)
+            print('kill sslocal process', pid)
+            return 1
+        else:
+            raise Exception("local port %s is used by other process %s"%(LOCAL_PORT, lines[1]))
+    return 0
+def startSslocal(server, port, passwd, encryption):
+    f = open("/tmp/atuoshadowsocks_sslocal.log", 'a')
+    cmd='setsid sslocal -s %s -p %s -l %s -k %s -t 600 -m %s'%(server, port, LOCAL_PORT, passwd, encryption)
+    subprocess.call(cmd, shell=True, stdout = f, stderr = f)
+    print("cmd:", cmd)
+
+def main():
+    while stopSslocal():
+        time.sleep(0.1)
+
+    if len(sys.argv) >=2 and sys.argv[1] != "stop":
+        serverlist = getFreshConfig()
+        print("server list:")
+        for s in serverlist:
+            print("  ", s)
+        oneServer = selectOneServer(serverlist)
+        print("select server:", oneServer)
+
+        startSslocal(oneServer[0], oneServer[1], oneServer[2], oneServer[3])
+    return
+
+if  __name__ == "__main__":
+    main()
