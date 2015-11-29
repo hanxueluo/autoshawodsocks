@@ -40,11 +40,11 @@ def getFreshConfig():
     return serverlist
 
 def selectOneServer(serverlist):
-    for s in serverlist:
+    #server jp3 works better for me. so iter from back
+    for s in serverlist[::-1]:
         if all(s):
             return s
     return None
-
 
 def stopSslocal():
     cmd='lsof -i TCP:%s -s TCP:listen -n -F pc || true'%(LOCAL_PORT)
@@ -60,10 +60,10 @@ def stopSslocal():
             raise Exception("local port %s is used by other process %s"%(LOCAL_PORT, lines[1]))
     return 0
 def startSslocal(server, port, passwd, encryption):
-    f = open("/tmp/atuoshadowsocks_sslocal.log", 'a')
-    cmd='setsid sslocal -s %s -p %s -l %s -k %s -t 600 -m %s'%(server, port, LOCAL_PORT, passwd, encryption)
-    subprocess.call(cmd, shell=True, stdout = f, stderr = f)
-    print("cmd:", cmd)
+    cmd='sslocal -s %s -p %s -l %s -k %s -t 600 -m %s'%(server, port, LOCAL_PORT, passwd, encryption)
+    with open("/tmp/autoshadowsocks_sslocal.log", 'a') as log:
+        subprocess.Popen(cmd, shell=True, stdout = log, stderr = log)
+        print("cmd:", cmd)
 
 def main():
     while stopSslocal():
@@ -75,9 +75,11 @@ def main():
         for s in serverlist:
             print("  ", s)
         oneServer = selectOneServer(serverlist)
-        print("select server:", oneServer)
-
-        startSslocal(oneServer[0], oneServer[1], oneServer[2], oneServer[3])
+        if oneServer:
+            print("select server:", oneServer)
+            startSslocal(oneServer[0], oneServer[1], oneServer[2], oneServer[3])
+        else:
+            print("error: select no server")
     return
 
 if  __name__ == "__main__":
