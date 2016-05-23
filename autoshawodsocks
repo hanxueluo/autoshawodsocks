@@ -39,12 +39,9 @@ def getFreshConfig():
                 serverlist[-1][v] = content
     return serverlist
 
-def selectOneServer(serverlist):
-    #server jp3 works better for me. so iter from back
-    for s in serverlist[::-1]:
-        if all(s):
-            return s
-    return None
+def selectOneServer(serverlist, index):
+    index = index % len(serverlist)
+    return serverlist[index]
 
 def stopSslocal():
     cmd='lsof -i TCP:%s -s TCP:listen -n -F pc || true'%(LOCAL_PORT)
@@ -65,16 +62,25 @@ def startSslocal(server, port, passwd, encryption):
         subprocess.Popen(cmd, shell=True, stdout = log, stderr = log)
         print("cmd:", cmd)
 
+def serverIndex(argv):
+    index = -1
+    if len(argv) > 1:
+        try:
+            index = int(sys.argv[1])
+        except:
+            pass
+    return index
+
 def main():
     while stopSslocal():
         time.sleep(0.1)
 
-    if len(sys.argv) ==1 or sys.argv[1] != "stop":
+    if len(sys.argv) == 1 or sys.argv[1] != "stop":
         serverlist = getFreshConfig()
         print("server list:")
         for s in serverlist:
             print("  ", s)
-        oneServer = selectOneServer(serverlist)
+        oneServer = selectOneServer(serverlist, serverIndex(sys.argv))
         if oneServer:
             print("select server:", oneServer)
             startSslocal(oneServer[0], oneServer[1], oneServer[2], oneServer[3])
