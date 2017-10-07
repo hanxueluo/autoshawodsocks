@@ -47,7 +47,7 @@ def stopSslocal():
     cmd='lsof -i TCP:%s -s TCP:listen -n -F pc || true'%(LOCAL_PORT)
     lines = subprocess.check_output(cmd, shell=True).strip().splitlines()
     print("lsof:", lines)
-    if len(lines) == 2:
+    if len(lines) >= 2:
         if lines[1] == b"csslocal":
             pid = int(lines[0][1:])
             os.kill(pid, signal.SIGTERM)
@@ -71,16 +71,22 @@ def serverIndex(argv):
             pass
     return index
 
+
+fileServer=["www",port, password, "rc4-md5"]
+
 def main():
     while stopSslocal():
         time.sleep(0.1)
 
     if len(sys.argv) == 1 or sys.argv[1] != "stop":
-        serverlist = getFreshConfig()
-        print("server list:")
-        for s in serverlist:
-            print("  ", s)
-        oneServer = selectOneServer(serverlist, serverIndex(sys.argv))
+        if fileServer:
+            oneServer = fileServer
+        else:
+            serverlist = getFreshConfig()
+            print("server list:")
+            for s in serverlist:
+                print("  ", s)
+            oneServer = selectOneServer(serverlist, serverIndex(sys.argv))
         if oneServer:
             print("select server:", oneServer)
             startSslocal(oneServer[0], oneServer[1], oneServer[2], oneServer[3])
